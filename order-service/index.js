@@ -366,7 +366,7 @@ app.get('/', async (req, res) => {
 });
 
 // Get all orders with items
-app.get('/Orders', async (req, res) => {
+app.get('/ORders', async (req, res) => {
   if (isShuttingDown) {
     return res.status(503).json({ 
       success: false, 
