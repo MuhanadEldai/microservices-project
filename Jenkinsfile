@@ -4,17 +4,19 @@ pipeline {
         PROJECT_DIR = "/home/muhanad/Documents/docker/Docker"
     }
     stages {
-        stage('Build Local Images') {
-            steps {
-                dir("${PROJECT_DIR}") {
-                    sh "docker build --pull=false -t user-service:local ./user-service"
-                    sh "docker build --pull=false -t product-service:local ./product-service"
-                    // Fixed: Moved the command below to its own line
-                    sh "docker build --pull=false -t order-service:local ./order-service"
-                    sh "docker build --pull=false -t api-gateway:local ./api-gateway"
-                }
-            }
+    
+       stage('Build Local Images') {
+    steps {
+        dir("${PROJECT_DIR}") {
+            // Use ${env.BUILD_ID} so Jenkins injects the number into the string
+            sh "docker build --pull=false -t user-service:${env.BUILD_ID} ./user-service"
+            sh "docker build --pull=false -t product-service:${env.BUILD_ID} ./product-service"
+            sh "docker build --pull=false -t order-service:${env.BUILD_ID} ./order-service"
+            sh "docker build --pull=false -t api-gateway:${env.BUILD_ID} ./api-gateway"
         }
+    }
+                                 }
+                                 
         stage('Test') {
             steps {
                 dir("${PROJECT_DIR}/product-service") {
@@ -28,13 +30,15 @@ pipeline {
                 }
             }
         }
+        
         stage('Deploy to Swarm') {
-            steps {
-                dir("${PROJECT_DIR}") {
-                    // Added --resolve-image=never to force use of the local images you just built
-                    sh "docker stack deploy --resolve-image=never -c docker-stack.yml stack"
-                }
-            }
-        }
+        steps {
+                 dir("${PROJECT_DIR}") {
+                 // This 'export' line tells the YAML file what the BUILD_ID is for this specific run
+                 sh "export BUILD_ID=${env.BUILD_ID} && docker stack deploy --resolve-image=never -c docker-stack.yml stack"
+                                        }
+              }
+                                }
+        
     }
 }
