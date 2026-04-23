@@ -363,7 +363,7 @@ app.get('/users/:id', async (req, res) => {
 });
 
 // Create user
-app.post('/users', async (req, res) => {
+app.post('/userS', async (req, res) => {
   if (isShuttingDown) {
     return res.status(503).json({ 
       success: false, 
