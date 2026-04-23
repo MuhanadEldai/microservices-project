@@ -31,7 +31,7 @@ services:
 
   # Product Service
   product-service:
-    image: product-service:${BUILD_TAG:-local}
+    image: product-service:${BUILD_ID}
     environment:
       - DB_HOST=db
       - DB_USER=root
@@ -64,7 +64,7 @@ services:
 
   # User Service
   user-service:
-    image: user-service:${BUILD_TAG:-local}
+    image: user-service:${BUILD_ID}
     environment:
       - DB_HOST=db
       - DB_USER=root
@@ -97,7 +97,7 @@ services:
 
   # Order Service
   order-service:
-    image: order-service:${BUILD_TAG:-local}
+    image: order-service:${BUILD_ID}
     environment:
       - DB_HOST=db
       - DB_USER=root
@@ -130,7 +130,7 @@ services:
 
   # API Gateway
   api-gateway:
-    image: api-gateway:${BUILD_TAG:-local}
+    image: api-gateway:${BUILD_ID}
     ports:
       - "80:3000"
     environment:
