@@ -1,11 +1,9 @@
 FROM node16-local:latest
-
 WORKDIR /app
-
-# Copy EVERYTHING including node_modules (which we will build on the host)
+# Copy package files first to leverage Docker cache
+COPY package*.json ./
+RUN npm install
+# Copy the rest of the code
 COPY . .
-
-# EXPOSE port
 EXPOSE 3003
-
 CMD ["node", "index.js"]
