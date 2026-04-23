@@ -316,7 +316,7 @@ app.get('/', async (req, res) => {
 });
 
 // Get all products (alternative endpoint)
-app.get('/products', async (req, res) => {
+app.get('/productsTEST', async (req, res) => {
   if (isShuttingDown) {
     return res.status(503).json({ 
       success: false, 
