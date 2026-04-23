@@ -209,7 +209,7 @@ app.use('/users', createProxyMiddleware({
 }));
 
 // Order Service Proxy with error tracking
-app.use('/orders', createProxyMiddleware({
+app.use('/ORDERS', createProxyMiddleware({
   target: 'http://order-service:3004',
   changeOrigin: true,
   pathRewrite: {
