@@ -41,4 +41,14 @@ pipeline {
                                 }
         
     }
+    
+    
+    post {
+        success {
+            // This removes images that are no longer tagged or used
+         
+            sh "docker image prune -f"
+        }
+    }
+    
 }
