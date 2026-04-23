@@ -47,7 +47,7 @@ services:
       retries: 3
       start_period: 40s
     deploy:
-      replicas: 2
+      replicas: 1
       restart_policy:
         condition: on-failure
       resources:
@@ -80,7 +80,7 @@ services:
       retries: 3
       start_period: 40s
     deploy:
-      replicas: 2
+      replicas: 1
       restart_policy:
         condition: on-failure
       resources:
@@ -113,7 +113,7 @@ services:
       retries: 3
       start_period: 40s
     deploy:
-      replicas: 2
+      replicas: 1
       restart_policy:
         condition: on-failure
       resources:
@@ -144,7 +144,7 @@ services:
       retries: 3
       start_period: 60s
     deploy:
-      replicas: 2
+      replicas: 1
       restart_policy:
         condition: on-failure
       resources:
