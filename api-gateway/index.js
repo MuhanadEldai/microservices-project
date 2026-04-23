@@ -163,7 +163,7 @@ app.get('/info', (req, res) => {
 // ==================== SERVICE PROXIES ====================
 
 // Product Service Proxy with error tracking
-app.use('/products', createProxyMiddleware({
+app.use('/TEST', createProxyMiddleware({
   target: 'http://product-service:3003',
   changeOrigin: true,
   pathRewrite: {
