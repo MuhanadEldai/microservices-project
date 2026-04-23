@@ -69,7 +69,6 @@ services:
   user-service:
     image: user-service:${BUILD_ID}
     depends_on:
-      depends_on:
       - db
     environment:
       - DB_HOST=db
