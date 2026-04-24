@@ -1,6 +1,7 @@
 pipeline {
     agent any
     environment {
+        DOCKER_BUILDKIT = '1'
         PROJECT_DIR = "/home/muhanad/Documents/docker/Docker"
     }
     stages {
