@@ -2,7 +2,6 @@ pipeline {
     agent any
     environment {
         DOCKER_BUILDKIT = '1'
-        DOCKER_API_VERSION = '1.43'
         PROJECT_DIR = "/home/muhanad/Documents/docker/Docker"
     }
     stages {
