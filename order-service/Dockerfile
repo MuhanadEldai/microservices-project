@@ -1,12 +1,17 @@
 FROM node16-local:latest
-
 WORKDIR /app
 
-# Copy EVERYTHING including node_modules (which we will build on the host)
+# 1. Copy dependencies first
+COPY package*.json ./
+
+# 2. Use the local node_modules if you are building offline 
+# OR run npm install if you want Docker to manage them
+# Since you mentioned building on host:
+COPY node_modules ./node_modules
+
+# 3. Copy source code last
 COPY . .
 
-# EXPOSE port
-EXPOSE 3004
-
-# No 'npm install' or 'apk add' here to stay offline
+EXPOSE 3004 
+USER node # Use the default node user included in the image
 CMD ["node", "index.js"]

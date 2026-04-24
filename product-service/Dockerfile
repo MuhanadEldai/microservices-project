@@ -1,10 +1,14 @@
 FROM node16-local:latest
 WORKDIR /app
-# Copy package files first to leverage Docker cache
+
+# 1. Layered Cache for Dependencies
 COPY package*.json ./
+# If you have node_modules locally and want to stay offline:
+COPY node_modules ./node_modules
 
-
-# Copy the rest of the code
+# 2. Source Code
 COPY . .
+
 EXPOSE 3003
+USER node
 CMD ["node", "index.js"]

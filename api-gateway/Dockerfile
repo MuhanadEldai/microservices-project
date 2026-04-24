@@ -1,18 +1,18 @@
 FROM node16-local:latest
 WORKDIR /app
 
-# 1. Move User creation to the TOP (This never changes)
+# 1. Infrastructure: User creation (Never changes)
 RUN addgroup --gid 1001 nodejs && \
     adduser --system --uid 1001 --ingroup nodejs nodejs
 
-# 2. Copy ONLY package files and install (Only re-runs if you change dependencies)
+# 2. Dependencies: Only re-runs if package.json changes
 COPY package*.json ./
 RUN npm install --omit=dev
 
-# 3. Copy the rest of the code (Only changes when you code)
+# 3. Source Code: Changes frequently
 COPY . .
 
-# 4. Fix permissions and set user
+# 4. Security: Fix permissions before switching user
 RUN chown -R nodejs:nodejs /app
 USER nodejs
 
