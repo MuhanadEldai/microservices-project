@@ -10,6 +10,7 @@ pipeline {
        stage('Build Local Images') {
     steps {
         dir("${PROJECT_DIR}") {
+        sh "docker version"
             // Use ${env.BUILD_ID} so Jenkins injects the number into the string
             sh "docker build --pull=false -t user-service:${env.BUILD_ID} ./user-service"
             sh "docker build --pull=false -t product-service:${env.BUILD_ID} ./product-service"
