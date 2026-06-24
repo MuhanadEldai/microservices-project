@@ -7,7 +7,7 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm install --production --silent
+RUN npm install --production 
 
 COPY . .
 

@@ -8,7 +8,7 @@ RUN apk add --no-cache curl
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install --production --silent
+RUN npm install
 
 # Copy source code
 COPY . .
