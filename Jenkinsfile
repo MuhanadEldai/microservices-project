@@ -7,13 +7,7 @@ pipeline {
     }
     
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-                echo "✅ Code checked out to: ${WORKSPACE}"
-                sh "ls -la ${WORKSPACE}"
-            }
-        }
+        
         
         stage('Build Local Images') {
             steps {
@@ -105,10 +99,7 @@ pipeline {
                         sh """
                             echo "🚀 Deploying to Docker Swarm..."
                             echo "Build ID: ${buildId}"
-                            
-                            # Initialize Swarm if not already
-                            docker swarm init --advertise-addr 127.0.0.1 2>/dev/null || true
-                            echo "✅ Swarm initialized"
+                          
                             
                             # Check if docker-stack.yml exists
                             if [ ! -f "docker-stack.yml" ]; then
@@ -121,74 +112,20 @@ pipeline {
                             echo "Deploying with BUILD_ID: ${BUILD_ID}"
                             
                             # Deploy stack with local images (no pull from registry)
-                            docker stack deploy --resolve-image=never -c docker-stack.yml myapp
+                            docker stack deploy --resolve-image=never -c docker-stack.yml stack
                             
                             echo "✅ Deployment initiated!"
                             echo "⏳ Waiting 15 seconds for Swarm convergence..."
                             sleep 15
-                            
-                            echo "📊 Services status:"
-                            docker stack services myapp
+                          
                         """
                     }
                 }
             }
         }
         
-        stage('Verify Deployment') {
-            steps {
-                dir("${PROJECT_DIR}") {
-                    sh """
-                        echo "🔍 Verifying deployment..."
-                        
-                        # Check service status
-                        echo "📊 Checking service status:"
-                        docker stack services myapp
-                        
-                        # Get service endpoints
-                        echo "🌐 Service endpoints:"
-                        
-                        # Check API Gateway health
-                        echo "Testing API Gateway (port 80)..."
-                        curl -s -o /dev/null -w "Health check: %{http_code}\\n" http://localhost/health || echo "⚠️ Gateway not ready yet"
-                        
-                        # Show running containers
-                        echo "📦 Running containers:"
-                        docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-                        
-                        echo "✅ Verification complete!"
-                    """
-                }
-            }
-        }
+       
     }
     
-    post {
-        always {
-            echo "📝 Build ${env.BUILD_ID} completed"
-            sh """
-                # Clean up old images (keep last 5)
-                docker image prune -f || true
-                echo "🧹 Cleanup complete"
-            """
-        }
-        success {
-            echo "🎉 Build successful! Images tagged with: ${env.BUILD_ID}"
-            sh """
-                echo "📊 Final stack status:"
-                docker stack services myapp
-                echo ""
-                echo "🌐 Access your services at:"
-                echo "   API Gateway: http://localhost"
-                echo "   Prometheus: http://localhost:9090"
-                echo "   Grafana: http://localhost:3001"
-            """
-        }
-        failure {
-            echo "❌ Build failed! Check the logs above for details."
-        }
-        aborted {
-            echo "⚠️ Build was aborted!"
-        }
-    }
+    
 }
