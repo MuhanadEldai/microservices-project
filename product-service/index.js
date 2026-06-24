@@ -23,6 +23,12 @@ const httpRequestDurationMicroseconds = new client.Histogram({
   buckets: [0.1, 5, 15, 50, 100, 200, 500, 1000]
 });
 
+const serviceMemoryUsage = new client.Gauge({
+  name: 'product_service_memory_bytes',
+  help: 'Product service memory usage in bytes',
+  labelNames: ['type']
+});
+
 const httpRequestsTotal = new client.Counter({
   name: 'product_service_http_requests_total',
   help: 'Total number of HTTP requests in product service',
@@ -133,6 +139,14 @@ app.use((req, res, next) => {
 // Prometheus metrics endpoint
 app.get('/metrics', async (req, res) => {
   try {
+  
+  // Collect memory usage metrics
+    const memory = process.memoryUsage();
+    serviceMemoryUsage.labels('rss').set(memory.rss);
+    serviceMemoryUsage.labels('heap_total').set(memory.heapTotal);
+    serviceMemoryUsage.labels('heap_used').set(memory.heapUsed);
+    serviceMemoryUsage.labels('external').set(memory.external);
+  
     // Update dynamic metrics
     serviceUptime.set(process.uptime());
     await updateProductsMetrics();
@@ -586,6 +600,16 @@ async function startServer() {
   // Periodical Updates
   setInterval(() => serviceUptime.set(process.uptime()), 10000);
   setInterval(async () => await updateProductsMetrics(), 30000);
+  setInterval(() => {
+    serviceUptime.set(process.uptime());
+    
+    // Update memory usage metrics in background
+    const memory = process.memoryUsage();
+    serviceMemoryUsage.labels('rss').set(memory.rss);
+    serviceMemoryUsage.labels('heap_total').set(memory.heapTotal);
+    serviceMemoryUsage.labels('heap_used').set(memory.heapUsed);
+    serviceMemoryUsage.labels('external').set(memory.external);
+  }, 10000);
 
   // Graceful Shutdown
   const gracefulShutdown = () => {
