@@ -1,6 +1,7 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
 const client = require('prom-client');
+const os = require('os');
 
 const app = express();
 
@@ -21,6 +22,11 @@ const httpRequestDurationMicroseconds = new client.Histogram({
   help: 'Duration of Product Service HTTP requests in ms',
   labelNames: ['method', 'route', 'status_code'],
   buckets: [0.1, 5, 15, 50, 100, 200, 500, 1000]
+});
+
+const containerFreeMemory = new client.Gauge({
+  name: 'product_service_container_free_memory_bytes',
+  help: 'Amount of free RAM remaining inside the product service container'
 });
 
 const serviceMemoryUsage = new client.Gauge({
@@ -139,6 +145,14 @@ app.use((req, res, next) => {
 // Prometheus metrics endpoint
 app.get('/metrics', async (req, res) => {
   try {
+  // Collect Node process memory
+    const memory = process.memoryUsage();
+    serviceMemoryUsage.labels('rss').set(memory.rss);
+    serviceMemoryUsage.labels('heap_total').set(memory.heapTotal);
+    serviceMemoryUsage.labels('heap_used').set(memory.heapUsed);
+
+    // Track the remaining physical memory left in the container
+    containerFreeMemory.set(os.freemem());
   
   // Collect memory usage metrics
     const memory = process.memoryUsage();
@@ -600,6 +614,21 @@ async function startServer() {
   // Periodical Updates
   setInterval(() => serviceUptime.set(process.uptime()), 10000);
   setInterval(async () => await updateProductsMetrics(), 30000);
+  
+  
+ // Periodical Updates
+  setInterval(() => {
+    serviceUptime.set(process.uptime());
+    
+    const memory = process.memoryUsage();
+    serviceMemoryUsage.labels('rss').set(memory.rss);
+    serviceMemoryUsage.labels('heap_total').set(memory.heapTotal);
+    serviceMemoryUsage.labels('heap_used').set(memory.heapUsed);
+
+    // Keep background metrics accurate
+    containerFreeMemory.set(os.freemem()); 
+  }, 10000);
+  
   setInterval(() => {
     serviceUptime.set(process.uptime());
     
