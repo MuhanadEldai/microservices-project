@@ -2,6 +2,7 @@ const express = require('express');
 const mysql = require('mysql2/promise');
 const client = require('prom-client');
 const os = require('os');
+const fs = require('fs'); // Added filesystem module to read cgroups
 
 const app = express();
 
@@ -31,7 +32,7 @@ const containerFreeMemory = new client.Gauge({
 
 const containerTotalMemory = new client.Gauge({
   name: 'product_service_container_total_memory_mb',
-  help: 'Total physical RAM allocated to the container or host in MB'
+  help: 'Total physical RAM allocated to the container in MB'
 });
 
 const serviceMemoryUsage = new client.Gauge({
@@ -80,6 +81,49 @@ const productOperations = new client.Counter({
   help: 'Total product operations (create, update, delete)',
   labelNames: ['operation']
 });
+
+// ==================== HELPER TO GET CONTAINER ISOLATED MEMORY ====================
+function getContainerMemoryMetrics() {
+  const MB = 1024 * 1024;
+  let totalMemoryMB = 0;
+  let usedMemoryMB = 0;
+  let freeMemoryMB = 0;
+
+  try {
+    // Try reading cgroups v2 paths first (Modern Linux/Docker runtime profiles)
+    if (fs.existsSync('/sys/fs/cgroup/memory.max')) {
+      const rawMax = fs.readFileSync('/sys/fs/cgroup/memory.max', 'utf8').trim();
+      const rawCurrent = fs.readFileSync('/sys/fs/cgroup/memory.current', 'utf8').trim();
+      
+      const hostTotal = os.totalmem();
+      const limitBytes = (rawMax === 'max' || parseInt(rawMax) > hostTotal) ? hostTotal : parseInt(rawMax);
+      
+      totalMemoryMB = limitBytes / MB;
+      usedMemoryMB = parseInt(rawCurrent) / MB;
+    } 
+    // Fallback parsing layer for cgroups v1 paths
+    else if (fs.existsSync('/sys/fs/cgroup/memory/memory.limit_in_bytes')) {
+      const rawMax = fs.readFileSync('/sys/fs/cgroup/memory/memory.limit_in_bytes', 'utf8').trim();
+      const rawCurrent = fs.readFileSync('/sys/fs/cgroup/memory/memory.usage_in_bytes', 'utf8').trim();
+      
+      const hostTotal = os.totalmem();
+      const limitBytes = parseInt(rawMax) > hostTotal ? hostTotal : parseInt(rawMax);
+      
+      totalMemoryMB = limitBytes / MB;
+      usedMemoryMB = parseInt(rawCurrent) / MB;
+    } else {
+      throw new Error('No supported cgroups memory subsystem path located');
+    }
+    
+    freeMemoryMB = Math.max(0, totalMemoryMB - usedMemoryMB);
+  } catch (error) {
+    // Standard system fallback if executing outside an active isolated Docker target
+    totalMemoryMB = os.totalmem() / MB;
+    freeMemoryMB = os.freemem() / MB;
+  }
+
+  return { total: totalMemoryMB, free: freeMemoryMB };
+}
 
 // ==================== DATABASE CONNECTION ====================
 
@@ -147,11 +191,12 @@ app.get('/metrics', async (req, res) => {
   try {
     const MB = 1024 * 1024;
 
-    // Collect Host/Container main memory status in MB
-    containerFreeMemory.set(os.freemem() / MB);
-    containerTotalMemory.set(os.totalmem() / MB);
+    // Collect Isolated Container memory status in MB
+    const containerMem = getContainerMemoryMetrics();
+    containerFreeMemory.set(containerMem.free);
+    containerTotalMemory.set(containerMem.total);
 
-    // Collect Node application internal process memory in MB
+    // Collect Node application internal process thread usage in MB
     const memory = process.memoryUsage();
     serviceMemoryUsage.labels('rss').set(memory.rss / MB);
     serviceMemoryUsage.labels('heap_total').set(memory.heapTotal / MB);
@@ -595,11 +640,12 @@ async function startServer() {
     const MB = 1024 * 1024;
     serviceUptime.set(process.uptime());
     
-    // Update main container/host memory stats in MB
-    containerFreeMemory.set(os.freemem() / MB);
-    containerTotalMemory.set(os.totalmem() / MB);
+    // Read container isolated cgroup memory details
+    const containerMem = getContainerMemoryMetrics();
+    containerFreeMemory.set(containerMem.free);
+    containerTotalMemory.set(containerMem.total);
     
-    // Update application internal memory stats in MB
+    // Update application internal memory profiles
     const memory = process.memoryUsage();
     serviceMemoryUsage.labels('rss').set(memory.rss / MB);
     serviceMemoryUsage.labels('heap_total').set(memory.heapTotal / MB);
