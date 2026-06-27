@@ -155,7 +155,7 @@ app.get('/metrics', async (req, res) => {
     containerFreeMemory.set(os.freemem());
   
   // Collect memory usage metrics
-    const memory = process.memoryUsage();
+    
     serviceMemoryUsage.labels('rss').set(memory.rss);
     serviceMemoryUsage.labels('heap_total').set(memory.heapTotal);
     serviceMemoryUsage.labels('heap_used').set(memory.heapUsed);
