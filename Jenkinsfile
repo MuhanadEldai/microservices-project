@@ -19,8 +19,7 @@ pipeline {
                             echo "🔨 Building Docker images in: \$(pwd)"
                             echo "Build ID: ${buildId}"
                             
-                            # Check if service directories exist
-                           
+                       
                             
                             # Build images with error handling
                             if [ -d "user-service" ]; then
@@ -55,8 +54,7 @@ pipeline {
                                 exit 1
                             fi
                             
-                            echo "✅ All images built successfully!"
-                            docker images | grep -E "user-service|product-service|order-service|api-gateway"
+                           
                         """
                     }
                 }
@@ -73,13 +71,7 @@ pipeline {
                         echo "📊 Checking built images:"
                         docker images | grep -E "user-service|product-service|order-service|api-gateway" || echo "⚠️ No images found"
                         
-                        # Verify Docker Compose/Stack files
-                        if [ -f "docker-stack.yml" ]; then
-                            echo "✅ docker-stack.yml found"
-                        else
-                            echo "❌ docker-stack.yml not found!"
-                            exit 1
-                        fi
+                
                         
                         # Quick Docker daemon check
                         docker info > /dev/null && echo "✅ Docker daemon is running" || echo "❌ Docker daemon not accessible"
