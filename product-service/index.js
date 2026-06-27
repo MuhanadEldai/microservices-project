@@ -25,19 +25,18 @@ const httpRequestDurationMicroseconds = new client.Histogram({
 });
 
 const containerFreeMemory = new client.Gauge({
-  name: 'product_service_container_free_memory_bytes',
-  help: 'Amount of free RAM remaining inside the product service container'
+  name: 'product_service_container_free_memory_mb',
+  help: 'Amount of free RAM remaining inside the product service container in MB'
 });
 
-// Added to track total main memory ceiling
 const containerTotalMemory = new client.Gauge({
-  name: 'product_service_container_total_memory_bytes',
-  help: 'Total physical RAM allocated to the container or host'
+  name: 'product_service_container_total_memory_mb',
+  help: 'Total physical RAM allocated to the container or host in MB'
 });
 
 const serviceMemoryUsage = new client.Gauge({
-  name: 'product_service_memory_bytes',
-  help: 'Product service memory usage in bytes',
+  name: 'product_service_memory_mb',
+  help: 'Product service memory usage in MB',
   labelNames: ['type']
 });
 
@@ -146,16 +145,18 @@ app.use((req, res, next) => {
 
 app.get('/metrics', async (req, res) => {
   try {
-    // Collect Host/Container main memory status
-    containerFreeMemory.set(os.freemem());
-    containerTotalMemory.set(os.totalmem());
+    const MB = 1024 * 1024;
 
-    // Collect Node application internal process memory
+    // Collect Host/Container main memory status in MB
+    containerFreeMemory.set(os.freemem() / MB);
+    containerTotalMemory.set(os.totalmem() / MB);
+
+    // Collect Node application internal process memory in MB
     const memory = process.memoryUsage();
-    serviceMemoryUsage.labels('rss').set(memory.rss);
-    serviceMemoryUsage.labels('heap_total').set(memory.heapTotal);
-    serviceMemoryUsage.labels('heap_used').set(memory.heapUsed);
-    serviceMemoryUsage.labels('external').set(memory.external);
+    serviceMemoryUsage.labels('rss').set(memory.rss / MB);
+    serviceMemoryUsage.labels('heap_total').set(memory.heapTotal / MB);
+    serviceMemoryUsage.labels('heap_used').set(memory.heapUsed / MB);
+    serviceMemoryUsage.labels('external').set(memory.external / MB);
   
     // Update dynamic statistics
     serviceUptime.set(process.uptime());
@@ -582,7 +583,6 @@ app.get('/products/category/:category', async (req, res) => {
 // ==================== SERVER INITIALIZATION ====================
 
 async function startServer() {
-  // Wait for DB to be 100% ready
   await initializeDatabase();
 
   const server = app.listen(3003, '0.0.0.0', () => {
@@ -592,18 +592,19 @@ async function startServer() {
 
   // Synchronized background interval loop (Updates every 10 seconds)
   setInterval(async () => {
+    const MB = 1024 * 1024;
     serviceUptime.set(process.uptime());
     
-    // Update main container/host memory stats
-    containerFreeMemory.set(os.freemem());
-    containerTotalMemory.set(os.totalmem());
+    // Update main container/host memory stats in MB
+    containerFreeMemory.set(os.freemem() / MB);
+    containerTotalMemory.set(os.totalmem() / MB);
     
-    // Update application internal memory stats
+    // Update application internal memory stats in MB
     const memory = process.memoryUsage();
-    serviceMemoryUsage.labels('rss').set(memory.rss);
-    serviceMemoryUsage.labels('heap_total').set(memory.heapTotal);
-    serviceMemoryUsage.labels('heap_used').set(memory.heapUsed);
-    serviceMemoryUsage.labels('external').set(memory.external);
+    serviceMemoryUsage.labels('rss').set(memory.rss / MB);
+    serviceMemoryUsage.labels('heap_total').set(memory.heapTotal / MB);
+    serviceMemoryUsage.labels('heap_used').set(memory.heapUsed / MB);
+    serviceMemoryUsage.labels('external').set(memory.external / MB);
   }, 10000);
 
   // Periodically refresh database product metrics profiles (Every 30 seconds)
