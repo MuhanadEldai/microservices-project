@@ -29,6 +29,12 @@ const containerFreeMemory = new client.Gauge({
   help: 'Amount of free RAM remaining inside the product service container'
 });
 
+// Added to track total main memory ceiling
+const containerTotalMemory = new client.Gauge({
+  name: 'product_service_container_total_memory_bytes',
+  help: 'Total physical RAM allocated to the container or host'
+});
+
 const serviceMemoryUsage = new client.Gauge({
   name: 'product_service_memory_bytes',
   help: 'Product service memory usage in bytes',
@@ -76,9 +82,6 @@ const productOperations = new client.Counter({
   labelNames: ['operation']
 });
 
-
-
-// Database connection with connection pooling
 // ==================== DATABASE CONNECTION ====================
 
 async function initializeDatabase() {
@@ -119,7 +122,6 @@ async function initializeDatabase() {
 
 // ==================== METRICS MIDDLEWARE ====================
 
-// Metrics collection middleware
 app.use((req, res, next) => {
   const start = Date.now();
   
@@ -142,26 +144,20 @@ app.use((req, res, next) => {
 
 // ==================== METRICS ENDPOINT ====================
 
-// Prometheus metrics endpoint
 app.get('/metrics', async (req, res) => {
   try {
-  // Collect Node process memory
-    const memory = process.memoryUsage();
-    serviceMemoryUsage.labels('rss').set(memory.rss);
-    serviceMemoryUsage.labels('heap_total').set(memory.heapTotal);
-    serviceMemoryUsage.labels('heap_used').set(memory.heapUsed);
-
-    // Track the remaining physical memory left in the container
+    // Collect Host/Container main memory status
     containerFreeMemory.set(os.freemem());
-  
-  // Collect memory usage metrics
-    
+    containerTotalMemory.set(os.totalmem());
+
+    // Collect Node application internal process memory
+    const memory = process.memoryUsage();
     serviceMemoryUsage.labels('rss').set(memory.rss);
     serviceMemoryUsage.labels('heap_total').set(memory.heapTotal);
     serviceMemoryUsage.labels('heap_used').set(memory.heapUsed);
     serviceMemoryUsage.labels('external').set(memory.external);
   
-    // Update dynamic metrics
+    // Update dynamic statistics
     serviceUptime.set(process.uptime());
     await updateProductsMetrics();
     
@@ -206,7 +202,6 @@ async function updateProductsMetrics() {
   }
 }
 
-// Helper function to execute queries with metrics
 async function executeQuery(query, params = [], queryType = 'custom') {
   if (!pool) {
     throw new Error('Database pool not available');
@@ -245,7 +240,6 @@ async function executeQuery(query, params = [], queryType = 'custom') {
 
 // ==================== ROUTES WITH METRICS ====================
 
-//  Health check with metrics
 app.get('/health', async (req, res) => {
   if (isShuttingDown) {
     return res.status(200).json({ 
@@ -287,7 +281,6 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// Service info endpoint
 app.get('/TEST', (req, res) => {
   res.json({
     service: 'product-service',
@@ -313,7 +306,6 @@ app.get('/TEST', (req, res) => {
   });
 });
 
-// Root endpoint for gateway - serve products
 app.get('/', async (req, res) => {
   if (isShuttingDown) {
     return res.status(503).json({ 
@@ -341,7 +333,6 @@ app.get('/', async (req, res) => {
   }
 });
 
-// Get all products (alternative endpoint)
 app.get('/products', async (req, res) => {
   if (isShuttingDown) {
     return res.status(503).json({ 
@@ -368,7 +359,6 @@ app.get('/products', async (req, res) => {
   }
 });
 
-// Get product by ID
 app.get('/products/:id', async (req, res) => {
   if (isShuttingDown) {
     return res.status(503).json({ 
@@ -404,7 +394,6 @@ app.get('/products/:id', async (req, res) => {
   }
 });
 
-// Create product
 app.post('/products', async (req, res) => {
   if (isShuttingDown) {
     return res.status(503).json({ 
@@ -416,7 +405,6 @@ app.post('/products', async (req, res) => {
   try {
     const { name, description, price, stock_quantity, category } = req.body;
     
-    // Validation
     if (!name || !price) {
       return res.status(400).json({
         success: false,
@@ -430,7 +418,6 @@ app.post('/products', async (req, res) => {
       'insert_product'
     );
 
-    // Update metrics
     productOperations.inc({ operation: 'create' });
     await updateProductsMetrics();
 
@@ -441,7 +428,7 @@ app.post('/products', async (req, res) => {
       metrics: 'Product count and operations metrics updated'
     });
   } catch (error) {
-    console.error('Error creating product:', error.message);
+    console.error('Error create product:', error.message);
     res.status(500).json({ 
       success: false, 
       error: 'Database error: ' + error.message 
@@ -449,7 +436,6 @@ app.post('/products', async (req, res) => {
   }
 });
 
-// Update product
 app.put('/products/:id', async (req, res) => {
   if (isShuttingDown) {
     return res.status(503).json({ 
@@ -475,7 +461,6 @@ app.put('/products/:id', async (req, res) => {
       });
     }
 
-    // Update metrics
     productOperations.inc({ operation: 'update' });
     await updateProductsMetrics();
 
@@ -493,7 +478,6 @@ app.put('/products/:id', async (req, res) => {
   }
 });
 
-// Delete product
 app.delete('/products/:id', async (req, res) => {
   if (isShuttingDown) {
     return res.status(503).json({ 
@@ -516,7 +500,6 @@ app.delete('/products/:id', async (req, res) => {
       });
     }
 
-    // Update metrics
     productOperations.inc({ operation: 'delete' });
     await updateProductsMetrics();
 
@@ -534,7 +517,6 @@ app.delete('/products/:id', async (req, res) => {
   }
 });
 
-// Search products by name
 app.get('/products/search/:query', async (req, res) => {
   if (isShuttingDown) {
     return res.status(503).json({ 
@@ -567,7 +549,6 @@ app.get('/products/search/:query', async (req, res) => {
   }
 });
 
-// Get products by category
 app.get('/products/category/:category', async (req, res) => {
   if (isShuttingDown) {
     return res.status(503).json({ 
@@ -600,8 +581,6 @@ app.get('/products/category/:category', async (req, res) => {
 
 // ==================== SERVER INITIALIZATION ====================
 
-// ==================== SERVER INITIALIZATION ====================
-
 async function startServer() {
   // Wait for DB to be 100% ready
   await initializeDatabase();
@@ -611,28 +590,15 @@ async function startServer() {
     console.log('📊 Metrics available at /metrics');
   });
 
-  // Periodical Updates
-  setInterval(() => serviceUptime.set(process.uptime()), 10000);
-  setInterval(async () => await updateProductsMetrics(), 30000);
-  
-  
- // Periodical Updates
-  setInterval(() => {
+  // Synchronized background interval loop (Updates every 10 seconds)
+  setInterval(async () => {
     serviceUptime.set(process.uptime());
     
-    const memory = process.memoryUsage();
-    serviceMemoryUsage.labels('rss').set(memory.rss);
-    serviceMemoryUsage.labels('heap_total').set(memory.heapTotal);
-    serviceMemoryUsage.labels('heap_used').set(memory.heapUsed);
-
-    // Keep background metrics accurate
-    containerFreeMemory.set(os.freemem()); 
-  }, 10000);
-  
-  setInterval(() => {
-    serviceUptime.set(process.uptime());
+    // Update main container/host memory stats
+    containerFreeMemory.set(os.freemem());
+    containerTotalMemory.set(os.totalmem());
     
-    // Update memory usage metrics in background
+    // Update application internal memory stats
     const memory = process.memoryUsage();
     serviceMemoryUsage.labels('rss').set(memory.rss);
     serviceMemoryUsage.labels('heap_total').set(memory.heapTotal);
@@ -640,7 +606,12 @@ async function startServer() {
     serviceMemoryUsage.labels('external').set(memory.external);
   }, 10000);
 
-  // Graceful Shutdown
+  // Periodically refresh database product metrics profiles (Every 30 seconds)
+  setInterval(async () => {
+    await updateProductsMetrics();
+  }, 30000);
+
+  // Graceful Shutdown Handler
   const gracefulShutdown = () => {
     if (isShuttingDown) return;
     console.log('🛑 Shutting down server gracefully...');
@@ -661,9 +632,7 @@ async function startServer() {
   process.on('SIGINT', gracefulShutdown);
 }
 
-// Start the sequence
 startServer().catch(err => {
   console.error('❌ Failed to start service:', err);
   process.exit(1);
 });
-
