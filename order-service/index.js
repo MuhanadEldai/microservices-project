@@ -306,7 +306,7 @@ app.get('/health', async (req, res) => {
 app.get('/info', (req, res) => {
   res.json({
     service: 'order-service',
-    version: '1.0.0',
+    version: '2.0.0',
     status: 'running',
     database: pool ? 'connected' : 'disconnected',
     uptime: process.uptime(),

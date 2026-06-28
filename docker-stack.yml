@@ -192,6 +192,7 @@ services:
   # Prometheus
   prometheus:
     image: prom/prometheus:latest
+    user: "0"
     ports:
       - "9090:9090"
     volumes:
@@ -228,6 +229,7 @@ services:
   # Grafana
   grafana:
     image: grafana/grafana:latest
+    user: "0"
     ports:
       - "3001:3000"
     environment:
