@@ -330,7 +330,7 @@ app.get('/health', async (req, res) => {
 app.get('/TEST', (req, res) => {
   res.json({
     service: 'product-service',
-    version: '6',
+    version: '1',
     status: 'running',
     database: pool ? 'connected' : 'disconnected',
     uptime: process.uptime(),
